@@ -20,3 +20,5 @@ Java 21
 ```shell
 java -jar zk-pdf-integration-版本号.jar
 ```
+### 2.4 访问地址
+访问地址为：http://localhost:21088
