@@ -1,0 +1,22 @@
+server:
+  port: 21088
+  compression:
+    enabled: true
+
+app:
+  version: @project.version@
+
+spring:
+  application:
+    name: zk-pdf-integration
+  servlet:
+    multipart:
+      enabled: true
+      # 单个文件的最大上限
+      max-file-size: 80MB
+      # 单个请求的文件总大小上限
+      max-request-size: 80MB
+
+my-config:
+  tmp-dir: tmp/
+  download-dir: tmp/download/

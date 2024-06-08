@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>自学考试花名册重排列工具</title>
+    <script src="lib/axios.min.js"></script>
+    <script src="axios-config.js"></script>
+    <script src="js.js"></script>
+</head>
+<body>
+<h1>自学考试花名册重排列工具</h1>
+<p>
+    本工具用于自学考试花名册重排列，做到每个专业内的花名册根据需求重复打印若干份，整合为一个 PDF 文件。
+</p>
+<p>
+    本工具可以做到将类似如下格式的花名册 PDF 文件根据专业重复打印整合
+    <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【土木工程-第1页】，【财务管理-第1页，财务管理-第2页】，……
+    <br/>
+    整合为
+    <br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【土木工程-第1页，土木工程-第1页，土木工程-第1页】，【财务管理-第1页，财务管理-第2页，财务管理-第1页，财务管理-第2页，财务管理-第1页，财务管理-第2页】，……
+</p>
+<p>
+    叠甲：本程序较为粗糙，代码较为简陋，仅用一晚上来编写，希望不要上传规定以外的文件，以免造成程序运行错误。源码：<a target="_blank" href="https://github.com/sleepybear1113/zk-pdf-integration">GitHub</a>。有能力者可以自行修改。
+</p>
+<p>
+    生成完毕后，下载 PDF 可能速度比较慢，因为预算有限，导致服务器的带宽有限，所有用户的总速度不超过 1MB/s，所以请耐心等待下载。
+</p>
+<hr>
+<h3>前提：</h3>
+<p>1. 需要为 PDF 文件。2. 这个 PDF 文件是文字格式（也就是可以用鼠标复制里面的文字）</p>
+<p>如何保存PDF的花名册？<a target="_blank" href="intro.html">点击这里查看</a></p>
+<hr>
+<div id="main">
+    <div>
+        <button id="select-file-button" onclick="selectFile()">选择花名册 PDF</button>
+        <label>
+            <input id="filename-input" disabled style="width: 200px">
+        </label>
+        <div id="pdf-upload-div" style="display: none">
+        </div>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label>
+            重复打印次数：
+            <input id="n-input" type="number" value="3" style="width: 50px" min="1" max="5">
+        </label>
+        <button onclick="document.getElementById('n-input').value = 3">重置重复次数为3</button>
+    </div>
+
+    <div id="pdf-upload-info"></div>
+    <div id="pdf-result-info-div"></div>
+</div>
+</body>
+</html>
