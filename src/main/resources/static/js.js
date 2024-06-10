@@ -13,6 +13,7 @@ class PdfResultInfoDto {
         this.originalPageCount = props.originalPageCount;
         this.newPageCount = props.newPageCount;
         this.outputPdfPath = props.outputPdfPath;
+        this.errorList = props.errorList ? props.errorList.map(item => String(item)) : [];
     }
 }
 
@@ -113,6 +114,16 @@ function integrationPdf(filename) {
                 <p>处理成功！</p>
                 <p>原页数：${pdfResultInfoDto.originalPageCount} 新页数：${pdfResultInfoDto.newPageCount} <a target="_blank" href=${axios.defaults.baseURL}/${pdfResultInfoDto.outputPdfPath}>点击下载</a></p>
             `;
+            if (pdfResultInfoDto.errorList.length > 0) {
+                div.innerHTML += "<p>错误信息：</p>";
+                let ul = document.createElement("ul");
+                pdfResultInfoDto.errorList.forEach(item => {
+                    let li = document.createElement("li");
+                    li.innerText = item;
+                    ul.appendChild(li);
+                });
+                div.appendChild(ul);
+            }
             pdfResultInfoDiv.appendChild(div);
             document.getElementById("select-file-button").disabled = false;
         }

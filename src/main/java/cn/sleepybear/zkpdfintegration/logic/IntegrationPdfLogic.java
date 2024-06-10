@@ -74,15 +74,26 @@ public class IntegrationPdfLogic {
         try (PDDocument pdfDocument = Loader.loadPDF(file)) {
             PDFTextStripper pdfStripper = new PDFTextStripper();
 
-            // 检查PDF文档首页是否包含指定标题
+            // 检查 PDF 文档首页是否包含指定标题
             pdfStripper.setStartPage(1);
             pdfStripper.setEndPage(1);
             String firstPageStr = pdfStripper.getText(pdfDocument);
-            if (!StringUtils.contains(firstPageStr, PAGE_TITLE_STR)) {
+            if (StringUtils.isBlank(firstPageStr)) {
+                throw new FrontException("PDF文档首页为空，无法整合！");
+            }
+            if (firstPageStr.length() < 50) {
+                throw new FrontException("PDF文档首页内容过少，无法整合！");
+            }
+            if (!StringUtils.contains(firstPageStr.substring(0, 50), PAGE_TITLE_STR)) {
                 throw new FrontException("PDF文档首页不包含指定标题，无法整合！");
             }
-            if (!firstPageStr.replace(" ", "").contains(FIRST_PAGE_STR)) {
+
+            String last50Chars = firstPageStr.substring(firstPageStr.length() - 50);
+            if (!last50Chars.replace(" ", "").contains(FIRST_PAGE_STR)) {
                 throw new FrontException("PDF文档首页不包含页码【第1页】，无法整合！请检查花名册右下角是否包含页码。");
+            }
+            if (last50Chars.contains(PAGE_TITLE_STR)) {
+                throw new FrontException("PDF文档首页尾部有误，无法整合！");
             }
 
             // 获取PDF总页数
@@ -96,10 +107,19 @@ public class IntegrationPdfLogic {
                 pdfStripper.setEndPage(page);
                 // 提取并清理当前页文本
                 String currPageStr = pdfStripper.getText(pdfDocument).replace(" ", "");
+                if (StringUtils.length(currPageStr) < 50) {
+                    pdfResultInfoDto.getErrorList().add("第" + page + "页内容过少，无法整合！");
+                    i++;
+                    continue;
+                }
+
+                String first50Chars1 = currPageStr.substring(0, 50);
+                String last50Chars1 = currPageStr.substring(currPageStr.length() - 50);
+
                 int startI = i;
                 int endI = i;
 
-                if (currPageStr.contains(FIRST_PAGE_STR)) {
+                if (first50Chars1.contains(PAGE_TITLE_STR) && last50Chars1.contains(FIRST_PAGE_STR) && !last50Chars1.contains(PAGE_TITLE_STR)) {
                     // 当前页包含章节起始标识，开始查找本章节结束页
                     while (true) {
                         i++;
@@ -127,6 +147,7 @@ public class IntegrationPdfLogic {
                 } else {
                     // 当前页不包含章节起始标识，继续下一页
                     i++;
+                    pdfResultInfoDto.getErrorList().add("第" + page + "页内容有误，无法整合！");
                 }
             }
 

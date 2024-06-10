@@ -5,6 +5,8 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * There is description
@@ -24,4 +26,6 @@ public class PdfResultInfoDto implements Serializable {
     private Integer newPageCount;
 
     private String outputPdfPath;
+
+    private List<String> errorList = new ArrayList<>();
 }
