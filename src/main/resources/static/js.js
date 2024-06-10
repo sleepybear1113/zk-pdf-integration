@@ -87,6 +87,12 @@ function uploadPdf(file) {
 }
 
 function integrationPdf(filename) {
+    let n = document.getElementById('n-input').value;
+    if (!n || n < 1 || n > 5) {
+        alert("重复次数请输入 1-5 之间的整数");
+        return false;
+    }
+
     document.getElementById("process-p").innerHTML = "处理中";
     let processing = setInterval(() => {
         if (document.getElementById("process-p").innerHTML.length > 10) {
@@ -95,7 +101,7 @@ function integrationPdf(filename) {
         document.getElementById("process-p").innerHTML += ".";
     }, 300);
 
-    axios.get("/integration/pdf", {params: {filename: filename, n: 3}}).then(response => {
+    axios.get("/integration/pdf", {params: {filename: filename, n: n}}).then(response => {
         clearInterval(processing);
         let data = response.data;
         let code = data.code;
