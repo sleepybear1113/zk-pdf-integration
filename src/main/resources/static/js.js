@@ -43,20 +43,42 @@ function selectFile() {
             document.getElementById("pdf-upload-info").innerHTML = "";
             document.getElementById("pdf-result-info-div").innerHTML = "";
 
-            uploadPdf(file);
+            let picFile = document.getElementById("pic-input-hide").files?.[0];
+            uploadPdf(file, picFile);
         }
     };
     pdfUploadDiv.appendChild(input);
     input.click();
 }
 
+function selectPicFile() {
+    let picUploadDiv = document.getElementById("pic-upload-div");
+    let filenameInput = document.getElementById("pic-input");
+    picUploadDiv.innerHTML = "";
+    filenameInput.value = "";
+    let input = document.createElement("input");
+    input.type = "file";
+    input.id = "pic-input-hide";
+    input.accept = ".jpg,.jpeg,.png,.gif,.bmp";
+    input.onchange = function () {
+        let file = input.files[0];
+        if (file) {
+            filenameInput.value = file.name;
+        }
+    };
+    picUploadDiv.appendChild(input);
+    input.click();
+}
+
 /**
  * 上传 PDF 文件
  * @param file
+ * @param picFile
  */
-function uploadPdf(file) {
+function uploadPdf(file, picFile) {
     let formData = new FormData();
     formData.append("files", file);
+    formData.append("files", picFile);
     axios.post("/upload/file", formData, {
         headers: {
             "Content-Type": "multipart/form-data",
@@ -79,19 +101,21 @@ function uploadPdf(file) {
 
             let files = res ? res.map(item => item) : [];
             console.log(files);
-            integrationPdf(files[0]);
+            integrationPdf(files[0], files[1]);
         }
     }).catch(error => {
         document.getElementById("select-file-button").disabled = false;
     });
 }
 
-function integrationPdf(filename) {
+function integrationPdf(filename, picFilename) {
     let n = document.getElementById('n-input').value;
     if (!n || n < 1 || n > 5) {
         alert("重复次数请输入 1-5 之间的整数");
         return false;
     }
+
+    let sort = !!document.getElementById("sort-1").checked;
 
     document.getElementById("process-p").innerHTML = "处理中";
     let processing = setInterval(() => {
@@ -101,7 +125,14 @@ function integrationPdf(filename) {
         document.getElementById("process-p").innerHTML += ".";
     }, 300);
 
-    axios.get("/integration/pdf", {params: {filename: filename, n: n}}).then(response => {
+    axios.get("/integration/pdf", {
+        params: {
+            filename: filename,
+            n: n,
+            sort: sort,
+            picFilename: picFilename,
+        }
+    }).then(response => {
         clearInterval(processing);
         let data = response.data;
         let code = data.code;
@@ -117,9 +148,12 @@ function integrationPdf(filename) {
             pdfResultInfoDiv.innerHTML = "";
             let div = document.createElement("div");
             div.innerHTML = `
-                <p>处理成功！</p>
-                <p>原页数：${pdfResultInfoDto.originalPageCount} 新页数：${pdfResultInfoDto.newPageCount} <a target="_blank" href=${axios.defaults.baseURL}/${pdfResultInfoDto.outputPdfPath}>点击下载</a></p>
+                <p>处理结束！</p>
+                <p>原页数：${pdfResultInfoDto.originalPageCount}，新页数：${pdfResultInfoDto.newPageCount}。</p>
             `;
+            if (pdfResultInfoDto.newPageCount > 0) {
+                div.innerHTML += `<p><a target="_blank" href=${axios.defaults.baseURL}/${pdfResultInfoDto.outputPdfPath}>点击下载</a></p>`;
+            }
             if (pdfResultInfoDto.errorList.length > 0) {
                 div.innerHTML += "<p>错误信息：</p>";
                 let ul = document.createElement("ul");

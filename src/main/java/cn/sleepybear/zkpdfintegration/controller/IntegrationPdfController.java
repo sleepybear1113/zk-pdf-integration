@@ -21,7 +21,7 @@ public class IntegrationPdfController {
     private IntegrationPdfLogic integrationPdfLogic;
 
     @RequestMapping("/integration/pdf")
-    public PdfResultInfoDto integrationPdf(String filename, Integer n) {
-        return integrationPdfLogic.integrationPdf(filename, n);
+    public PdfResultInfoDto integrationPdf(String filename, String picFilename, Integer n, Boolean sort) {
+        return integrationPdfLogic.integrationPdf(filename, picFilename, n, Boolean.TRUE.equals(sort));
     }
 }

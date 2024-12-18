@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>自学考试花名册重排列工具</title>
-    <script src="lib/axios.min.js"></script>
+    <script src="lib/axios.1.7.4.min.js"></script>
     <script src="axios-config.js"></script>
     <script src="js.js?v=1.0.1"></script>
 </head>
@@ -22,7 +22,7 @@
     &nbsp;&nbsp;&nbsp;&nbsp;【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【学前教育-第1页，学前教育-第2页，学前教育-第3页】，【土木工程-第1页，土木工程-第1页，土木工程-第1页】，【财务管理-第1页，财务管理-第2页，财务管理-第1页，财务管理-第2页，财务管理-第1页，财务管理-第2页】，……
 </p>
 <p>
-    叠甲：本程序较为粗糙，代码较为简陋，仅用一晚上来编写，希望不要上传规定以外的文件，以免造成程序运行错误。源码：<a target="_blank" href="https://github.com/sleepybear1113/zk-pdf-integration">GitHub</a>。有能力者可以自行修改。
+    叠甲：本程序较为粗糙，代码较为简陋，希望不要上传规定以外的文件，以免造成程序运行错误。源码：<a target="_blank" href="https://github.com/sleepybear1113/zk-pdf-integration">GitHub</a>。有能力者可以自行修改。
 </p>
 <p>
     生成完毕后，下载 PDF 可能速度比较慢，因为预算有限，导致服务器的带宽有限，所有用户的总速度不超过 1MB/s，所以请耐心等待下载。
@@ -34,16 +34,36 @@
 <hr>
 <div id="main">
     <div>
-        <button id="select-file-button" onclick="selectFile()">选择花名册 PDF</button>
-        <label>
-            <input id="filename-input" disabled style="width: 200px">
-        </label>
-        <div id="pdf-upload-div" style="display: none">
+        <div>
+            <button id="select-pic-button" onclick="selectPicFile()">选择签名图片</button>
+            <label>
+                <input id="pic-input" disabled style="width: 200px">
+            </label>
+            <button onclick="document.getElementById('pic-input').value = ''; document.getElementById('pic-input-hide').value = ''">清空</button>
         </div>
+
+        <div>
+            <button id="select-file-button" onclick="selectFile()">选择花名册 PDF</button>
+            <label>
+                <input id="filename-input" disabled style="width: 200px">
+            </label>
+        </div>
+
+        <div id="pdf-upload-div" style="display: none"></div>
+        <div id="pic-upload-div" style="display: none"></div>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <label>
+            顺序：
+            <label for="sort-1">按照专业代码排序</label>
+            <input id="sort-1" name="sort" type="radio" checked>
+
+            <label for="sort-2">| 按照PDF自带顺序排序</label>
+            <input id="sort-2" name="sort" type="radio">
+        </label>
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
         <label>
             重复打印次数：
-            <input id="n-input" type="number" value="3" style="width: 50px" min="1" max="5">
+            <input id="n-input" type="number" value="3" style="width: 50px" min="1" max="10">
         </label>
         <button onclick="document.getElementById('n-input').value = 3">重置重复次数为3</button>
     </div>

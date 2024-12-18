@@ -2,6 +2,7 @@ package cn.sleepybear.zkpdfintegration.logic;
 
 import cn.sleepybear.zkpdfintegration.config.MyConfig;
 import cn.sleepybear.zkpdfintegration.dto.PdfResultInfoDto;
+import cn.sleepybear.zkpdfintegration.dto.SubjectInfoDto;
 import cn.sleepybear.zkpdfintegration.exception.FrontException;
 import cn.sleepybear.zkpdfintegration.utils.CommonUtils;
 import jakarta.annotation.Resource;
@@ -10,6 +11,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Component;
 
@@ -27,21 +30,22 @@ import java.util.List;
 @Component
 @Slf4j
 public class IntegrationPdfLogic {
-    private static final String FIRST_PAGE_STR = "第1页";
     private static final String PAGE_TITLE_STR = "毕业生花名册";
 
     @Resource
     private MyConfig myConfig;
 
     public static void main(String[] args) {
-        String pdfPath = "test/pdf/input/ttt.pdf";
+        String pdfPath = "test/pdf/input/毕业生花名册_@@_4.pdf";
         String outputFolder = "test/pdf/output/test.pdf";
+        String picPath = "test/pdf/input/111.png";
         int numCopiesPerChapter = 3;
 
+        integrationPdf(new File(pdfPath), new File(picPath), outputFolder, numCopiesPerChapter, true);
         System.out.println("PDF复制和整合完成！");
     }
 
-    public PdfResultInfoDto integrationPdf(String filename, Integer n) {
+    public PdfResultInfoDto integrationPdf(String filename, String picFilename, Integer n, boolean sort) {
         if (StringUtils.isBlank(filename)) {
             throw new FrontException("文件名不能为空！");
         }
@@ -60,101 +64,147 @@ public class IntegrationPdfLogic {
             throw new FrontException("复制次数必须大于 0！");
         }
 
-        return integrationPdf(pdfPath, outputFolder, n);
+        File picFile = null;
+        if (StringUtils.isNotBlank(picFilename)) {
+            picFile = new File(myConfig.getTmpDir() + picFilename);
+            if (!picFile.exists()) {
+                picFile = null;
+            }
+        }
+
+        PdfResultInfoDto pdfResultInfoDto = integrationPdf(file, picFile, outputFolder, n, sort);
+        // 删除源文件
+        if (!file.delete()) {
+            log.warn("删除源文件失败，{}", pdfPath);
+        }
+        return pdfResultInfoDto;
     }
 
-    private PdfResultInfoDto integrationPdf(String pdfPath, String outputPath, int numCopiesPerChapter) {
+    private static PdfResultInfoDto integrationPdf(File file, File picFile, String outputPath, int numCopiesPerChapter, boolean sort) {
         List<Integer> list = new ArrayList<>();
         PdfResultInfoDto pdfResultInfoDto = new PdfResultInfoDto();
 
         // 加载PDF文档
-        File file = new File(pdfPath);
         pdfResultInfoDto.setFilenameOriginal(file.getName());
         pdfResultInfoDto.setFilename(file.getName().split(UploadLogic.UPLOAD_FILE_SPLIT)[1]);
         try (PDDocument pdfDocument = Loader.loadPDF(file)) {
             PDFTextStripper pdfStripper = new PDFTextStripper();
 
-            // 检查 PDF 文档首页是否包含指定标题
-            pdfStripper.setStartPage(1);
-            pdfStripper.setEndPage(1);
-            String firstPageStr = pdfStripper.getText(pdfDocument);
-            if (StringUtils.isBlank(firstPageStr)) {
-                throw new FrontException("PDF文档首页为空，无法整合！");
-            }
-            if (firstPageStr.length() < 50) {
-                throw new FrontException("PDF文档首页内容过少，无法整合！");
-            }
-            if (!StringUtils.contains(firstPageStr.substring(0, 50), PAGE_TITLE_STR)) {
-                throw new FrontException("PDF文档首页不包含指定标题，无法整合！");
-            }
-
-            String last50Chars = firstPageStr.substring(firstPageStr.length() - 50);
-            if (!last50Chars.replace(" ", "").contains(FIRST_PAGE_STR)) {
-                throw new FrontException("PDF文档首页不包含页码【第1页】，无法整合！请检查花名册右下角是否包含页码。");
-            }
-            if (last50Chars.contains(PAGE_TITLE_STR)) {
-                throw new FrontException("PDF文档首页尾部有误，无法整合！");
-            }
-
-            // 获取PDF总页数
+            List<SubjectInfoDto> subjectInfoDtoList = new ArrayList<>();
+            // 获取 PDF 总页数
             int numPages = pdfDocument.getNumberOfPages();
             pdfResultInfoDto.setOriginalPageCount(numPages);
-            int i = 0;
-            while (i < numPages) {
+            for (int i = 0; i < numPages; i++) {
                 // 设置当前页为起始页和结束页，只提取该页内容
                 int page = i + 1;
                 pdfStripper.setStartPage(page);
                 pdfStripper.setEndPage(page);
-                // 提取并清理当前页文本
-                String currPageStr = pdfStripper.getText(pdfDocument).replace(" ", "");
-                if (StringUtils.length(currPageStr) < 50) {
-                    pdfResultInfoDto.getErrorList().add("第" + page + "页内容过少，无法整合！");
-                    i++;
+                // 提取并清理当前页文本，将多个空格或者空白替换为空白
+                String currPageStr = pdfStripper.getText(pdfDocument).trim().replaceAll(" ", "");
+
+                // 检测当前页内容是否符合要求：不为空，包含指定标题和页码
+                if (currPageStr.isBlank()) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容为空，无法整合！请检查PDF文件！".formatted(page));
+                    continue;
+                }
+                String[] lines = currPageStr.split("\n");
+                if (lines.length < 3) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！内容过少".formatted(page));
+                    continue;
+                }
+                if (!lines[0].contains(PAGE_TITLE_STR)) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！首行不包含“%s”字样！".formatted(page, PAGE_TITLE_STR));
                     continue;
                 }
 
-                String first50Chars1 = currPageStr.substring(0, 50);
-                String last50Chars1 = currPageStr.substring(currPageStr.length() - 50);
+                SubjectInfoDto subjectInfoDto = new SubjectInfoDto();
 
-                int startI = i;
-                int endI = i;
-
-                if (first50Chars1.contains(PAGE_TITLE_STR) && last50Chars1.contains(FIRST_PAGE_STR) && !last50Chars1.contains(PAGE_TITLE_STR)) {
-                    // 当前页包含章节起始标识，开始查找本章节结束页
-                    while (true) {
-                        i++;
-                        if (i >= numPages) {
-                            break;
-                        }
-                        pdfStripper.setStartPage(i + 1);
-                        pdfStripper.setEndPage(i + 1);
-                        String nextPageStr = pdfStripper.getText(pdfDocument).replace(" ", "");
-                        if (nextPageStr.contains(FIRST_PAGE_STR)) {
-                            // 找到下一章的起始页，结束查找
-                            break;
-                        } else {
-                            // 更新章节结束页
-                            endI = i;
-                        }
-                    }
-
-                    // 按要求的复制次数添加本章节所有页
-                    for (int m = 0; m < numCopiesPerChapter; m++) {
-                        for (int j = startI; j <= endI; j++) {
-                            list.add(j);
-                        }
-                    }
-                } else {
-                    // 当前页不包含章节起始标识，继续下一页
-                    i++;
-                    pdfResultInfoDto.getErrorList().add("第" + page + "页内容有误，无法整合！");
+                // 第二行，提取专业名称，spilt by 20xx年
+                String line2 = lines[1];
+                String zy = "专业：";
+                if (!line2.contains(zy)) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！第二行不包含“%s”字样！".formatted(page, zy));
+                    continue;
                 }
+                String zyCodeName = line2.substring(zy.length()).split("20\\d{2}年")[0].trim();
+                String[] split = zyCodeName.split("-");
+                subjectInfoDto.setSubjectCode(split[0]);
+                subjectInfoDto.setSubjectName(split[1]);
+
+                // 最后一行，提取页码，第n页
+                String lastLine = lines[lines.length - 1];
+                if (!lastLine.contains("第") && !lastLine.contains("页")) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！末行不包含“第xx页”字样！".formatted(page));
+                    continue;
+                }
+                String[] split1 = lastLine.split("第");
+                String pageNum = split1[1].split("页")[0];
+                subjectInfoDto.setPageNum(pageNum);
+                subjectInfoDto.setIndex(i);
+
+                // 倒数第二行，提取学校名称
+                String lineLast2 = lines[lines.length - 2].trim();
+                if (!lineLast2.contains("市教育考试机构盖章") && !lineLast2.contains("盖章省自考委盖章")) {
+                    pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！倒数第二行不包含“高校名称”字样！".formatted(page));
+                    continue;
+                }
+                String school = lineLast2.replace("市教育考试机构盖章", "").replace("盖章省自考委盖章", "");
+                subjectInfoDto.setSchool(school);
+
+                subjectInfoDtoList.add(subjectInfoDto);
+            }
+
+            List<SubjectInfoDto> resList = new ArrayList<>();
+            SubjectInfoDto pre = null;
+            for (SubjectInfoDto subjectInfoDto : subjectInfoDtoList) {
+                if (pre == null || !pre.getKey().equals(subjectInfoDto.getKey())) {
+                    pre = subjectInfoDto;
+                    pre.setStartIndex(subjectInfoDto.getIndex());
+                    pre.setEndIndex(subjectInfoDto.getIndex());
+                    resList.add(subjectInfoDto);
+                } else {
+                    pre.setEndIndex(subjectInfoDto.getIndex());
+                }
+            }
+
+            if (sort) {
+                resList.sort(SubjectInfoDto::compareTo);
+            }
+
+            for (SubjectInfoDto subjectInfoDto : resList) {
+                for (int m = 0; m < numCopiesPerChapter; m++) {
+                    for (int j = subjectInfoDto.getStartIndex(); j <= subjectInfoDto.getEndIndex(); j++) {
+                        list.add(j);
+                    }
+                }
+            }
+            pdfResultInfoDto.setNewPageCount(list.size());
+            if (list.isEmpty()) {
+                pdfResultInfoDto.getErrorList().add("无法整合PDF文件！");
+                return pdfResultInfoDto;
             }
 
             // 创建输出PDF文档
             try (PDDocument outputDocument = new PDDocument()) {
+
                 for (int pageIndex : list) {
                     PDPage page = pdfDocument.getPage(pageIndex);
+
+                    if (picFile != null) {
+                        PDImageXObject pdImage = PDImageXObject.createFromFile(picFile.getAbsolutePath(), outputDocument);
+                        // 图片大小 (根据需要调整)
+                        float imageWidth = pdImage.getWidth();
+                        float imageHeight = pdImage.getHeight();
+                        // 创建一个内容流，追加内容
+                        PDPageContentStream contentStream = new PDPageContentStream(outputDocument, page, PDPageContentStream.AppendMode.APPEND, true);
+                        float xPosition = 428f;
+                        float yPosition = 3430f;
+                        // 在指定位置插入图片
+                        contentStream.drawImage(pdImage, xPosition, yPosition, imageWidth, -imageHeight);
+                        // 关闭内容流
+                        contentStream.close();
+                    }
+
                     // 添加页到输出文档
                     outputDocument.addPage(page);
                 }
@@ -163,16 +213,10 @@ public class IntegrationPdfLogic {
                 outputDocument.save(outputPath);
             }
 
-            pdfResultInfoDto.setNewPageCount(list.size());
             pdfResultInfoDto.setOutputPdfPath(outputPath);
         } catch (IOException e) {
             log.error("PDF整合失败！", e);
             throw new FrontException("PDF整合失败！" + e.getMessage());
-        } finally {
-            // 删除源文件
-            if (!file.delete()) {
-                log.warn("删除源文件失败，{}", pdfPath);
-            }
         }
 
         return pdfResultInfoDto;
