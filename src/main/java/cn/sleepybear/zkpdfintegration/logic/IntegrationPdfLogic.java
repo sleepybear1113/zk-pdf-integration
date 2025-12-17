@@ -132,12 +132,12 @@ public class IntegrationPdfLogic {
                 subjectInfoDto.setSubjectName(split[1]);
 
                 // 最后一行，提取页码，第n页
-                String lastLine = lines[lines.length - 1];
-                if (!lastLine.contains("第") && !lastLine.contains("页")) {
+                String last3Line = lines[lines.length - 3];
+                if (!last3Line.contains("第") && !last3Line.contains("页")) {
                     pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！末行不包含“第xx页”字样！".formatted(page));
                     continue;
                 }
-                String[] split1 = lastLine.split("第");
+                String[] split1 = last3Line.split("第");
                 String pageNum = split1[1].split("页")[0];
                 subjectInfoDto.setPageNum(pageNum);
                 subjectInfoDto.setIndex(i);
