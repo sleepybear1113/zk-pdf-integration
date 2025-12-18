@@ -10,7 +10,7 @@
     </parent>
     <groupId>cn.sleepybear</groupId>
     <artifactId>zk-pdf-integration</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <name>zk-pdf-integration</name>
     <description>zk-pdf-integration</description>
     <properties>

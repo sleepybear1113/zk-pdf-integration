@@ -43,7 +43,7 @@ function selectFile() {
             document.getElementById("pdf-upload-info").innerHTML = "";
             document.getElementById("pdf-result-info-div").innerHTML = "";
 
-            let picFile = document.getElementById("pic-input-hide").files?.[0];
+            let picFile = document.getElementById("pic-input-hide")?.files?.[0];
             uploadPdf(file, picFile);
         }
     };
@@ -101,7 +101,7 @@ function uploadPdf(file, picFile) {
 
             let files = res ? res.map(item => item) : [];
             console.log(files);
-            integrationPdf(files[0], files[1]);
+            integrationPdf(files[0], files.length > 1 ? files[1] : null);
         }
     }).catch(error => {
         document.getElementById("select-file-button").disabled = false;

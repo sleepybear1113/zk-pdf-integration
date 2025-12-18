@@ -31,6 +31,7 @@ import java.util.List;
 @Slf4j
 public class IntegrationPdfLogic {
     private static final String PAGE_TITLE_STR = "毕业生花名册";
+    private static final String PAGE_TITLE_STR2 = "花名册";
 
     @Resource
     private MyConfig myConfig;
@@ -112,7 +113,7 @@ public class IntegrationPdfLogic {
                     pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！内容过少".formatted(page));
                     continue;
                 }
-                if (!lines[0].contains(PAGE_TITLE_STR)) {
+                if (!lines[0].contains(PAGE_TITLE_STR) && !lines[0].contains(PAGE_TITLE_STR2)) {
                     pdfResultInfoDto.getErrorList().add("第%d页内容有误，无法整合！请检查PDF文件！首行不包含“%s”字样！".formatted(page, PAGE_TITLE_STR));
                     continue;
                 }
